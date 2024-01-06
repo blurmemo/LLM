@@ -47,7 +47,7 @@ hf_hub_download(repo_id="internlm/internlm-7b", filename="config.json", local_di
 
 ### 下载前
 
-![image-20240106233849869.png](assets%2Fimage-20240106233849869.png)![image-20240106233849869](E:/OneDrive/%E6%A1%8C%E9%9D%A2/image-20240106233849869.png)
+![image-20240106233849869.png](assets%2Fimage-20240106233849869.png)
 
 ### 下载后
 
