@@ -55,26 +55,12 @@ hf_hub_download(repo_id="internlm/internlm-7b", filename="config.json", local_di
 
 ## 完成浦语·灵笔的图文理解及创作部署
 
+### 创作
+
 ![image-20240106230814209](assets/image-20240106230814209.png)
-
-
-
-
-
-
 
 ![image-20240106230931461](assets/image-20240106230931461.png)
 
-
-
-
-
-```
-安装
-pip install gradio_client
-```
-
-
-
 ##  完成 Lagent 工具调用 Demo 创作部署
 
+![image-20240107012002986](assets/image-20240107012002986.png)
