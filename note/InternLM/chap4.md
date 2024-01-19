@@ -357,24 +357,27 @@ lmdeploy serve api_client http://localhost:port(23333)
 >
 > ssh -CNg -L 6006:127.0.0.1:6006 [root@ssh.intern-ai.org.cn](mailto:root@ssh.intern-ai.org.cn) -p <ssh 端口号>
 
-### TurboMind 服务作为后端
+### 方式1：TurboMind 服务作为后端
 
 启动API Server和作为前端的 Gradio
 
 ```
 # Gradio+ApiServer 必须先开启 Server，此时 Gradio 为 Client
-lmdeploy serve gradio http://0.0.0.0:23333 \
-	--server_name 0.0.0.0 \
-	--server_port 6006 \
-	--restful_api True
+# 开启API Server
+lmdeploy serve api_server ./workspace --server_name 0.0.0.0--server_port 23333 --instance_num 64 --tp 1
+
+# 启动gradio，相当于调用http
+lmdeploy serve gradio http://0.0.0.0:23333 --server_name 0.0.0.0 --server_port 6006 --restful_api True
 ```
 
-### TurboMind 推理作为后端
+### 方式2：TurboMind 推理作为后端
 
 - Gradio 也可以直接和 TurboMind 连接
 
 ```
 # Gradio+Turbomind(local)
+# 直接执行
+# gradio默认是6006端口，远程服务器需要转发到本地
 lmdeploy serve gradio ./workspace
 ```
 
@@ -563,16 +566,12 @@ KV Cache 量化是将已经生成序列的 KV 变成 Int8
 ```bash
 # 计算 minmax
 """
+生成统计结果
 在这个命令行中，会选择 128 条输入样本，每条样本长度为 2048，数据集选择 C4，输入模型后就会得到上面的各种统计值
 如果显存不足，可以适当调小 samples 的数量或 sample 的长度
 """
 
-lmdeploy lite calibrate \
-  --model  /root/share/temp/model_repos/internlm-chat-7b/ \
-  --calib_dataset "c4" \
-  --calib_samples 128 \
-  --calib_seqlen 2048 \
-  --work_dir ./quant_output
+lmdeploy lite calibrate --model  /root/share/temp/model_repos/internlm-chat-7b/ --calib_dataset "c4" --calib_samples 128 --calib_seqlen 2048 --work_dir ./quant_output
 ```
 
 > 由于默认需要从 Huggingface 下载数据集
@@ -594,12 +593,8 @@ dequant: f = q * scale + zp
 第二步的执行命令如下：
 
 ```
-# 通过 minmax 获取量化参数
-lmdeploy lite kv_qparams \
-  --work_dir ./quant_output  \
-  --turbomind_dir workspace/triton_models/weights/ \
-  --kv_sym False \
-  --num_tp 1
+# 通过 minmax 获取量化参数，量化过程
+lmdeploy lite kv_qparams --work_dir ./quant_output(上个阶段生成统计数据的目录)  --turbomind_dir workspace/triton_models/weights/ --kv_sym False --num_tp 1
 ```
 
 - `num_tp` 表示 Tensor 的并行数，每一层的中心值和缩放值会存储到 `workspace` 的参数目录中以便后续使用
@@ -646,7 +641,7 @@ lmdeploy lite kv_qparams \
 
 W4A16中的A是指Activation，保持FP16，只对参数进行 4bit 量化
 
-第一步：同上面KV Cache量化第一步
+第一步：同上面KV Cache量化第一步，获取统计结果
 
 第二步：量化权重模型
 
@@ -661,12 +656,8 @@ W4A16中的A是指Activation，保持FP16，只对参数进行 4bit 量化
 第二步的执行命令如下：
 
 ```
-# 量化权重模型
-lmdeploy lite auto_awq \
-  --model  /root/share/temp/model_repos/internlm-chat-7b/ \
-  --w_bits 4 \
-  --w_group_size 128 \
-  --work_dir ./quant_output 
+# 量化权重模型，量化后的模型存放在 ./quant_output 
+lmdeploy lite auto_awq --model  /root/share/temp/model_repos/internlm-chat-7b/ --w_bits 4 --w_group_size 128  --work_dir ./quant_output 
 ```
 
  `w_bits` 表示量化的位数，`w_group_size` 表示量化分组统计的尺寸，`work_dir` 是量化后模型输出的位置
@@ -681,9 +672,7 @@ lmdeploy lite auto_awq \
 
 ```
 # 转换模型的layout，存放在默认路径 ./workspace 下
-lmdeploy convert  internlm-chat-7b ./quant_output \
-    --model-format awq \
-    --group-size 128
+lmdeploy convert  internlm-chat-7b ./quant_output --model-format awq --group-size 128
 ```
 
  `group-size` 就是第二步的 `w_group_size`
@@ -691,10 +680,7 @@ lmdeploy convert  internlm-chat-7b ./quant_output \
 如果不和之前的 `workspace` 重复，可以指定输出目录：`--dst_path`
 
 ```
-lmdeploy convert  internlm-chat-7b ./quant_output \
-    --model-format awq \
-    --group-size 128 \
-    --dst_path ./workspace_quant
+lmdeploy convert  internlm-chat-7b ./quant_output  --model-format awq --group-size 128 --dst_path ./workspace_quant
 ```
 
 量化模型和 KV Cache 量化也可以一起使用，以达到最大限度节省显存
@@ -720,6 +706,8 @@ TurboMind 相比其他框架速度优势非常显著，比 mlc-llm 快了将近 
 4bit 模型可以降低 50-60% 的显存占用，效果非常明显
 
 W4A16 参数量化后能极大地降低显存，同时相比其他框架推理速度具有明显优势
+
+**先进行量化W4A16，然后KV Cache量化**
 
 ## 最佳实践
 
