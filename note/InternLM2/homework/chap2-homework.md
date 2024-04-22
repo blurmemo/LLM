@@ -47,7 +47,7 @@
 
 **1**
 
-- 笔记：
+- 笔记：[LLM/note/InternLM2/chap2.md at main · blurmemo/LLM (github.com)](https://github.com/blurmemo/LLM/blob/main/note/InternLM2/chap2.md)
 
 - 对话截图
 
